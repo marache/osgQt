@@ -1,8 +1,8 @@
 # pkg-config source file
 
-prefix=/usr
+prefix=/usr/local
 exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
+libdir=${exec_prefix}/lib64
 includedir=${prefix}/include
 
 Name: openthreads
