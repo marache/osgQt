@@ -35,32 +35,48 @@ public:
     typedef std::pair<unsigned int, unsigned int> Segment;
     typedef std::vector<Segment>  Segments;
     osg::ref_ptr<osg::Vec3Array> _vertices;
-    unsigned int _start;
-    unsigned int _count;
+    osg::ref_ptr<osg::DrawElementsUShort> _elements;
     Segments _segments;
 
-    Boundary(osg::Vec3Array* vertices, unsigned int start, unsigned int count)
+    Boundary(osg::Vec3Array* vertices, osg::PrimitiveSet* primitiveSet)
     {
-        _vertices = vertices;
-        _start = start;
-        _count = count;
-
-        if ((*_vertices)[start]==(*_vertices)[start+count-1])
+        osg::DrawArrays* drawArrays = dynamic_cast<osg::DrawArrays*>(primitiveSet);
+        if (drawArrays)
         {
-            // OSG_NOTICE<<"Boundary is a line loop"<<std::endl;
+            set(vertices, drawArrays->getFirst(), drawArrays->getCount());
         }
         else
         {
-            OSG_NOTICE<<"Boundary is not a line loop"<<std::endl;
+            osg::DrawElementsUShort* elements = dynamic_cast<osg::DrawElementsUShort*>(primitiveSet);
+            if (elements) set(vertices, elements);
         }
+    }
 
-        _segments.reserve(count-1);
-        for(unsigned int i=start; i<start+count-2; ++i)
+    void set(osg::Vec3Array* vertices, unsigned int start, unsigned int count)
+    {
+        osg::DrawElementsUShort* elements = new osg::DrawElementsUShort(osg::PrimitiveSet::POLYGON);
+        for(unsigned int i=start; i<start+count; ++i)
         {
-            _segments.push_back(Segment(i,i+1));
+            elements->push_back(i);
         }
-        _segments.push_back(Segment(start+count-2,start));
 
+        set(vertices, elements);
+    }
+
+    void set(osg::Vec3Array* vertices, osg::DrawElementsUShort* elements)
+    {
+        _vertices = vertices;
+        _elements = elements;
+
+        _segments.clear();
+
+        if (elements->empty()) return;
+
+        _segments.reserve(elements->size()-1);
+        for(unsigned int i=0; i<elements->size()-1; ++i)
+        {
+            _segments.push_back(Segment((*elements)[i],(*elements)[i+1]));
+        }
     }
 
     osg::Vec3 computeRayIntersectionPoint(const osg::Vec3& a, const osg::Vec3& an, const osg::Vec3& c, const osg::Vec3& cn)
@@ -251,7 +267,7 @@ public:
         face->setName("face");
 
         // reserve enough space in the vertex array to accomodate the vertices associated with the segments
-        new_vertices->reserve(new_vertices->size() + _segments.size()+1 + _count);
+        new_vertices->reserve(new_vertices->size() + _segments.size()+1 + _elements->size());
 
         // create vertices
         unsigned int previous_second = _segments[0].second;
@@ -259,10 +275,13 @@ public:
         unsigned int first = new_vertices->size();
         new_vertices->push_back(newPoint);
 
-        if (_segments[0].first != _start)
+        unsigned int start = (*_elements)[0];
+        unsigned int count = _elements->size();
+
+        if (_segments[0].first != start)
         {
             //OSG_NOTICE<<"We have pruned from the start"<<std::endl;
-            for(unsigned int j=_start; j<=_segments[0].first;++j)
+            for(unsigned int j=start; j<=_segments[0].first;++j)
             {
                 face->push_back(first);
             }
@@ -298,7 +317,7 @@ public:
         // fill the end of the polygon with repititions of the first index in the polygon to ensure
         // that the orignal and new boundary polygons have the same number and pairing of indices.
         // This ensures that the bevel can be created coherently.
-        while(face->size() < _count)
+        while(face->size() < count)
         {
             face->push_back(first);
         }
@@ -313,11 +332,11 @@ public:
         
         osg::DrawElementsUShort* bevel = new osg::DrawElementsUShort(GL_QUAD_STRIP);
         bevel->setName("bevel");
-        bevel->reserve(_count*2);
-        for(unsigned int i=0; i<_count; ++i)
+        bevel->reserve(count*2);
+        for(unsigned int i=0; i<count; ++i)
         {
             unsigned int vi = new_vertices->size();
-            new_vertices->push_back((*_vertices)[_start+i]);
+            new_vertices->push_back((*_vertices)[(*_elements)[i]]);
             bevel->push_back(vi);
             bevel->push_back((*face)[i]);
         }
@@ -328,6 +347,9 @@ public:
     {
         if (_segments.empty()) return;
 
+        unsigned int start = (*_elements)[0];
+        unsigned int count = _elements->size();
+
         if (geometry->getVertexArray()==0) geometry->setVertexArray(new osg::Vec3Array(*_vertices));
         osg::Vec3Array* new_vertices = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
 
@@ -336,7 +358,7 @@ public:
         face->setName(faceName);
 
         // reserve enough space in the vertex array to accomodate the vertices associated with the segments
-        new_vertices->reserve(new_vertices->size() + _segments.size()+1 + _count);
+        new_vertices->reserve(new_vertices->size() + _segments.size()+1 + count);
 
         // create vertices
         unsigned int previous_second = _segments[0].second;
@@ -344,10 +366,10 @@ public:
         unsigned int first = new_vertices->size();
         new_vertices->push_back(newPoint);
 
-        if (_segments[0].first != _start)
+        if (_segments[0].first != start)
         {
             //OSG_NOTICE<<"We have pruned from the start"<<std::endl;
-            for(unsigned int j=_start; j<=_segments[0].first;++j)
+            for(unsigned int j=start; j<=_segments[0].first;++j)
             {
                 face->push_back(first);
             }
@@ -383,7 +405,7 @@ public:
         // fill the end of the polygon with repititions of the first index in the polygon to ensure
         // that the orignal and new boundary polygons have the same number and pairing of indices.
         // This ensures that the bevel can be created coherently.
-        while(face->size() < _count)
+        while(face->size() < count)
         {
             face->push_back(first);
         }
@@ -396,10 +418,10 @@ public:
 
         osg::DrawElementsUShort* bevel = new osg::DrawElementsUShort(GL_QUAD_STRIP);
         bevel->setName(bevelName);
-        bevel->reserve(_count*2);
-        for(unsigned int i=0; i<_count; ++i)
+        bevel->reserve(count*2);
+        for(unsigned int i=0; i<count; ++i)
         {
-            bevel->push_back(_start+i);
+            bevel->push_back((*_elements)[i]);
             bevel->push_back((*face)[i]);
         }
         geometry->addPrimitiveSet(bevel);
@@ -444,24 +466,24 @@ osg::Geometry* computeGlyphGeometry(osgText::Glyph3D* glyph, float bevelThicknes
         itr != orig_primitives.end();
         ++itr)
     {
-        osg::DrawArrays* drawArray = dynamic_cast<osg::DrawArrays*>(itr->get());
-        if (drawArray && drawArray->getMode()==GL_POLYGON)
+        if ((*itr)->getMode()==GL_POLYGON)
         {
-            Boundary boundaryInner(orig_vertices, drawArray->getFirst(), drawArray->getCount());
+            Boundary boundaryInner(orig_vertices, itr->get());
             boundaryInner.removeAllSegmentsBelowThickness(bevelThickness);
             boundaryInner.newAddBoundaryToGeometry(new_geometry, bevelThickness, "face", "bevel");
 
-            Boundary boundaryOuter(orig_vertices, drawArray->getFirst(), drawArray->getCount());
+            Boundary boundaryOuter(orig_vertices, itr->get());
             boundaryOuter.removeAllSegmentsAboveThickness(-shellThickness);
             boundaryOuter.newAddBoundaryToGeometry(new_geometry, -shellThickness, "", "shell");
         }
+        
     }
 
     osg::Vec3Array* vertices = dynamic_cast<osg::Vec3Array*>(new_geometry->getVertexArray());
 
     // need to tessellate the inner boundary
     {
-        osg::Geometry* face_geometry = new osg::Geometry;
+        osg::ref_ptr<osg::Geometry> face_geometry = new osg::Geometry;
         face_geometry->setVertexArray(vertices);
 
         osg::CopyOp copyop(osg::CopyOp::DEEP_COPY_ALL);
@@ -508,6 +530,123 @@ osg::Geometry* computeGlyphGeometry(osgText::Glyph3D* glyph, float bevelThicknes
     }
 
     return new_geometry.release();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+// computeTextGeometry
+//
+osg::Geometry* computeTextGeometry(osgText::Glyph3D* glyph, float width)
+{
+    osg::Vec3Array* orig_vertices = glyph->getRawVertexArray();
+    osg::Geometry::PrimitiveSetList& orig_primitives = glyph->getRawFacePrimitiveSetList();
+
+    osg::ref_ptr<osg::Geometry> text_geometry = new osg::Geometry;
+    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array((*orig_vertices));
+
+    text_geometry->setVertexArray(vertices.get());
+    text_geometry->setPrimitiveSetList(orig_primitives);
+
+    osgUtil::Tessellator ts;
+    ts.setWindingType(osgUtil::Tessellator::TESS_WINDING_POSITIVE);
+    ts.setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
+    ts.retessellatePolygons(*text_geometry);
+
+    osg::TriangleIndexFunctor<CollectTriangleIndicesFunctor> ctif;
+    text_geometry->accept(ctif);
+    CollectTriangleIndicesFunctor::Indices& indices = ctif._indices;
+
+    // remove the previous primitive sets
+    text_geometry->getPrimitiveSetList().clear();
+
+    if (indices.empty()) return 0;
+
+
+    // create a front face using triangle indices
+    osg::DrawElementsUShort* frontFace = new osg::DrawElementsUShort(GL_TRIANGLES);
+    frontFace->setName("face");
+    text_geometry->addPrimitiveSet(frontFace);
+    for(unsigned int i=0; i<indices.size();++i)
+    {
+        frontFace->push_back(indices[i]);
+    }
+
+    typedef std::vector<unsigned int> Indices;
+    const unsigned int NULL_VALUE = UINT_MAX;
+    Indices back_indices;
+    back_indices.resize(vertices->size(), NULL_VALUE);
+    osg::Vec3 forward(0,0,-width);
+
+    // build up the vertices primitives for the back face, and record the indices
+    // for later use, and to ensure sharing of vertices in the face primitive set
+    // the order of the triangle indices are flipped to make sure that the triangles are back face
+    osg::DrawElementsUShort* backFace = new osg::DrawElementsUShort(GL_TRIANGLES);
+    text_geometry->addPrimitiveSet(backFace);
+    for(unsigned int i=0; i<indices.size()-2;)
+    {
+        unsigned int p1 = indices[i++];
+        unsigned int p2 = indices[i++];
+        unsigned int p3 = indices[i++];
+        if (back_indices[p1]==NULL_VALUE)
+        {
+            back_indices[p1] = vertices->size();
+            vertices->push_back((*vertices)[p1]+forward);
+        }
+
+        if (back_indices[p2]==NULL_VALUE)
+        {
+            back_indices[p2] = vertices->size();
+            vertices->push_back((*vertices)[p2]+forward);
+        }
+
+        if (back_indices[p3]==NULL_VALUE)
+        {
+            back_indices[p3] = vertices->size();
+            vertices->push_back((*vertices)[p3]+forward);
+        }
+
+        backFace->push_back(back_indices[p1]);
+        backFace->push_back(back_indices[p3]);
+        backFace->push_back(back_indices[p2]);
+    }
+
+    unsigned int orig_size = orig_vertices->size();
+    Indices frontedge_indices, backedge_indices;
+    frontedge_indices.resize(orig_size, NULL_VALUE);
+    backedge_indices.resize(orig_size, NULL_VALUE);
+
+
+    for(osg::Geometry::PrimitiveSetList::iterator itr = orig_primitives.begin();
+        itr != orig_primitives.end();
+        ++itr)
+    {
+        osg::DrawElementsUShort* edging = new osg::DrawElementsUShort(osg::PrimitiveSet::QUAD_STRIP);
+        text_geometry->addPrimitiveSet(edging);
+
+        osg::DrawElementsUShort* elements = dynamic_cast<osg::DrawElementsUShort*>(itr->get());
+        if (elements)
+        {
+            for(unsigned int i=0; i<elements->size(); ++i)
+            {
+                unsigned int ei = (*elements)[i];
+                if (frontedge_indices[ei]==NULL_VALUE)
+                {
+                    frontedge_indices[ei] = vertices->size();
+                    vertices->push_back((*orig_vertices)[ei]);
+                }
+                if (backedge_indices[ei]==NULL_VALUE)
+                {
+                    backedge_indices[ei] = vertices->size();
+                    vertices->push_back((*orig_vertices)[ei]+forward);
+                }
+
+                edging->push_back(backedge_indices[ei]);
+                edging->push_back(frontedge_indices[ei]);
+            }
+        }
+    }
+
+    return text_geometry.release();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
