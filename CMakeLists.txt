@@ -1,53 +1,8 @@
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-IF(WIN32)
-    CMAKE_MINIMUM_REQUIRED(VERSION 2.4.6 FATAL_ERROR)
-ELSE(WIN32)
-    IF(APPLE)
-        CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
-    ELSE(APPLE)
-        CMAKE_MINIMUM_REQUIRED(VERSION 2.4.4 FATAL_ERROR)
-    ENDIF(APPLE)
-ENDIF(WIN32)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8,9 FATAL_ERROR)
 
-if(COMMAND cmake_policy)
-    # Works around warnings libraries linked against that don't
-    # have absolute paths (e.g. -lpthreads)
-    cmake_policy(SET CMP0003 NEW)
-
-    # Works around warnings about escaped quotes in ADD_DEFINITIONS
-    # statements.
-    cmake_policy(SET CMP0005 NEW)
-
-    # tell CMake to prefer CMake's own CMake modules when available
-    # only available from cmake-2.8.4
-    if(${CMAKE_MAJOR_VERSION} GREATER 2 OR
-        (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} GREATER 8) OR
-        (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} EQUAL 8 AND ${CMAKE_PATCH_VERSION} GREATER 3))
-        cmake_policy(SET CMP0017 NEW)
-    endif()
-
-    # cmake-2.6.1 introduces policy cmp0008 decide how to treat full path libraries that do not appear to be valid library file names
-    # quote from cvslog "Such libraries worked by accident in the VS IDE and Xcode generators in CMake 2.4 and below."
-    if(${CMAKE_MAJOR_VERSION} GREATER 2 OR
-        (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} GREATER 6) OR
-        (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} EQUAL 6 AND ${CMAKE_PATCH_VERSION} GREATER 0))
-        cmake_policy(SET CMP0008 OLD)
-    endif()
-
-    # disable autolinking to qtmain as we have our own main() functions (new in Qt 5.1)
-    if(${CMAKE_MAJOR_VERSION} GREATER 2 OR
-        (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} GREATER 8) OR
-        (${CMAKE_MAJOR_VERSION} EQUAL 2 AND ${CMAKE_MINOR_VERSION} EQUAL 8 AND ${CMAKE_PATCH_VERSION} GREATER 10))
-        cmake_policy(SET CMP0020 OLD)
-    endif()
-    # nicer version check - but needs at least CMake 2.6.2? Worth upgrading the requirements?
-    #if("${CMAKE_VERSION}" VERSION_GREATER 2.8.10)
-    # or even easier (available in cmake-2.6)
-    #if(POLICY CMPxyzw)
-
-endif()
 
 IF(APPLE)
   # Get OSX version in MAJOR.MINOR format
@@ -658,132 +613,30 @@ IF(ANDROID)
 ENDIF()
 
 
-################################################################################
-# Set Config header file
-
-SET(OPENSCENEGRAPH_CONFIG_HEADER "${PROJECT_BINARY_DIR}/include/osg/Config")
-CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/src/osg/Config.in"
-               "${OPENSCENEGRAPH_CONFIG_HEADER}")
-
 
 ################################################################################
 # Set OpenGL header file
 
-INCLUDE (CheckCXXSourceCompiles)
 #SET(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${OPENGL_INCLUDE_DIR})
-
-check_cxx_source_compiles(
-    "${OPENGL_HEADER1}
-    ${OPENGL_HEADER2}
-    int main() { GLint64 test; return 0; }"
-    GL_HEADER_HAS_GLINT64
-)
-
-check_cxx_source_compiles(
-    "${OPENGL_HEADER1}
-    ${OPENGL_HEADER2}
-    int main() { GLuint64 test; return 0; }"
-    GL_HEADER_HAS_GLUINT64
-)
-
-SET(OPENSCENEGRAPH_OPENGL_HEADER "${PROJECT_BINARY_DIR}/include/osg/GL")
-CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/src/osg/GL.in"
-               "${OPENSCENEGRAPH_OPENGL_HEADER}")
-
-# INSTALL_FILES(/include/osg/ FILES "${OPENSCENEGRAPH_CONFIG_HEADER}")
 
 
 ################################################################################
 # Set Version header file
 
-SET(OPENSCENEGRAPH_VERSION_HEADER "${PROJECT_BINARY_DIR}/include/osg/Version")
-CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/src/osg/Version.in"
-               "${OPENSCENEGRAPH_VERSION_HEADER}")
+# SET(OPENSCENEGRAPH_VERSION_HEADER "${PROJECT_BINARY_DIR}/include/osg/Version")
+# CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/src/osg/Version.in"
+#                "${OPENSCENEGRAPH_VERSION_HEADER}")
 
 ################################################################################
 # Set Version Info resource file
 
 
-IF(MSVC)
-    SET(OPENSCENEGRAPH_VERSIONINFO_RC "${PROJECT_BINARY_DIR}/PlatformSpecifics/Windows/OpenSceneGraphVersionInfo.rc")
-    CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/PlatformSpecifics/Windows/OpenSceneGraphVersionInfo.rc.in"
-                   "${OPENSCENEGRAPH_VERSIONINFO_RC}")
-ENDIF()
-
 ################################################################################
 # Optional build components
 
-# OSG Applications
-OPTION(BUILD_OSG_APPLICATIONS "Enable to build OSG Applications (e.g. osgviewer)" ON)
-
 # OSG Examples
-OPTION(BUILD_OSG_EXAMPLES "Enable to build OSG Examples" OFF)
+OPTION(BUILD_OSG_EXAMPLES "Enable to build osgQt Examples" OFF)
 
-################################################################################
-# 3rd Party Dependency Stuff
-IF(WIN32 AND NOT ANDROID)
-    INCLUDE(Find3rdPartyDependencies)
-ENDIF()
-
-OPTION(OSG_USE_LOCAL_LUA_SOURCE "Enable to use local Lua source when building the lua plugin" ON)
-
-#
-# If you want to prevent CMake from picking up on any of the following optional 3rd Party dependencies in CMake 2.8 onwards
-# you can use the following style of command line option when invoking Cmake (here illustrating ignoring PythonLibs) :
-# cmake -DCMAKE_DISABLE_FIND_PACKAGE_PythonLibs=1 .
-#
-IF(ANDROID)
-    ANDROID_3RD_PARTY()
-ELSE()
-# Common to all platforms except android:
-    FIND_PACKAGE(Freetype)
-    FIND_PACKAGE(Inventor)
-    FIND_PACKAGE(Jasper)
-    FIND_PACKAGE(OpenEXR)
-    FIND_PACKAGE(COLLADA)
-    FIND_PACKAGE(FBX)
-    FIND_PACKAGE(ZLIB)
-    FIND_PACKAGE(Xine)
-    FIND_PACKAGE(OpenVRML)
-    FIND_PACKAGE(Performer)
-    FIND_PACKAGE(GDAL)
-    FIND_PACKAGE(GTA)
-    FIND_PACKAGE(CURL)
-    FIND_PACKAGE(LibVNCServer)
-    FIND_PACKAGE(OurDCMTK)
-    FIND_PACKAGE(FFmpeg)
-    FIND_PACKAGE(GStreamer COMPONENTS app pbutils)
-    FIND_PACKAGE(GLIB COMPONENTS gobject)
-    FIND_PACKAGE(DirectShow)
-    FIND_PACKAGE(SDL2)
-    FIND_PACKAGE(SDL)
-    FIND_PACKAGE(Poppler-glib)
-    FIND_PACKAGE(RSVG)
-    FIND_PACKAGE(GtkGl)
-    FIND_PACKAGE(DirectInput)
-    FIND_PACKAGE(NVTT)
-    IF (NOT WIN32)
-        FIND_PACKAGE(Asio)
-    ENDIF()
-    FIND_PACKAGE(ZeroConf)
-
-    FIND_PACKAGE(LIBLAS)
-
-    IF (NOT(OSG_USE_LOCAL_LUA_SOURCE))
-        FIND_PACKAGE(Lua52)
-        IF (NOT (LUA_LIBRARIES AND LUA_INCLUDE_DIR))
-            FIND_PACKAGE(Lua51)
-        ENDIF()
-    ENDIF()
-
-    # V8 and Python plugins are tests for linking against these libraries but aren't functionality beyond this.
-    # FIND_PACKAGE(V8)
-    # FIND_PACKAGE(PythonLibs)
-ENDIF()
-
-IF(CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION LESS 8)
-    FIND_PACKAGE(ITK)
-ENDIF()
 
 # Include macro utilities here
 INCLUDE(OsgMacroUtils)
@@ -844,54 +697,6 @@ IF(OSG_USE_QT AND NOT ANDROID)
 
 ENDIF()
 
-#optional example related dependencies
-IF   (BUILD_OSG_EXAMPLES AND NOT ANDROID)
-
-
-    FIND_PACKAGE(FLTK)
-    FIND_PACKAGE(FOX)
-
-    SET(wxWidgets_USE_LIBS base core gl net)
-    FIND_PACKAGE(wxWidgets)
-
-ENDIF(BUILD_OSG_EXAMPLES AND NOT ANDROID)
-
-
-# Platform specific:
-# (We can approach this one of two ways. We can try to FIND everything
-# and simply check if we found the packages before actually building
-# or we can hardcode the cases. The advantage of the former is that
-# packages that are installed on platforms that don't require them
-# will still get built (presuming no compatibility issues). But this
-# also means modules that are redundant may get built. For example,
-# OS X doesn't need GIF, JPEG, PNG, TIFF, etc because it uses QuickTime.
-# Also, it will clutter the CMake menu with "NOT_FOUND".
-# The downside to the latter is that it is harder to build those
-# potentially redundant modules.)
-
-# Image readers/writers depend on 3rd party libraries except for OS X which
-# can use Quicktime.
-IF(NOT ANDROID)
-    IF(NOT APPLE)
-        FIND_PACKAGE(GIFLIB)
-        FIND_PACKAGE(JPEG)
-        FIND_PACKAGE(PNG)
-        FIND_PACKAGE(TIFF)
-        # QuickTime is required for OS X, but optional for Windows.
-        IF(WIN32)
-            FIND_PACKAGE(QuickTime)
-        ENDIF()
-
-    ELSE()
-        FIND_PACKAGE(TIFF)
-        FIND_PACKAGE(QuickTime)
-        FIND_PACKAGE(QTKit)
-        FIND_PACKAGE(CoreVideo)
-        FIND_PACKAGE(CoreMedia)
-        FIND_PACKAGE(QuartzCore)
-        FIND_PACKAGE(AVFoundation)
-    ENDIF()
-ENDIF()
 
 ################################################################################
 # Create bin and lib directories if required
@@ -1331,22 +1136,7 @@ ENDIF()
 # Generate pkg-config configuration files
 
 SET(PKGCONFIG_FILES
-  openscenegraph
-  openscenegraph-osg
-  openscenegraph-osgDB
-  openscenegraph-osgFX
-  openscenegraph-osgGA
-  openscenegraph-osgParticle
-  openscenegraph-osgSim
-  openscenegraph-osgText
-  openscenegraph-osgUtil
-  openscenegraph-osgTerrain
-  openscenegraph-osgManipulator
-  openscenegraph-osgViewer
-  openscenegraph-osgWidget
-  openscenegraph-osgShadow
-  openscenegraph-osgAnimation
-  openscenegraph-osgVolume
+  openscenegraph-osgQt
 )
 
 IF(QT4_FOUND OR Qt5Widgets_FOUND )
@@ -1365,45 +1155,6 @@ ENDFOREACH(PKGCONFIG_FILE)
 # Run this as late as possible so users can easier spot the message
 IF (NOT DEFINED REQUIRES_LIBPATH_MESSAGE AND ${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local")
     SET(REQUIRES_LIBPATH_MESSAGE ON)
-ENDIF()
-
-IF(REQUIRES_LIBPATH_MESSAGE)
-    IF (NOT OSG_LIBPATH_MESSAGE_HAS_BEEN_RUN_BEFORE)
-        SET(OSG_LIBPATH_MESSAGE_HAS_BEEN_RUN_BEFORE 1 CACHE INTERNAL "Flag to track whether the libpath message has been reported before")
-
-        MESSAGE("\nThe build system is configured to install libraries to ${CMAKE_INSTALL_PREFIX}/lib${LIB_POSTFIX}\n"
-            "Your applications may not be able to find your installed libraries unless you:\n"
-            "    set your LD_LIBRARY_PATH (user specific) or\n"
-            "    update your ld.so configuration (system wide)")
-        IF(IS_DIRECTORY /etc/ld.so.conf.d)
-            MESSAGE("You have an ld.so.conf.d directory on your system, so if you wish to ensure that\n"
-                "applications find the installed osg libraries, system wide, you could install an\n"
-                "OpenSceneGraph specific ld.so configuration with:\n"
-                "    sudo make install_ld_conf\n")
-            CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/packaging/ld.so.conf.d/openscenegraph.conf.in
-                ${PROJECT_BINARY_DIR}/packaging/ld.so.conf.d/openscenegraph.conf
-            )
-            ADD_CUSTOM_TARGET(install_ld_conf ${CMAKE_COMMAND} -E copy_if_different
-                ${PROJECT_BINARY_DIR}/packaging/ld.so.conf.d/openscenegraph.conf
-                /etc/ld.so.conf.d/openscenegraph.conf
-                COMMAND ldconfig
-                COMMENT "Copying openscenegraph.conf to /etc/ld.so.conf.d and running ldconfig"
-            )
-        ELSE()
-            IF(EXISTS /etc/ld.so.conf)
-                MESSAGE("You have an ld.so.conf file in /etc, if you wish to ensure \n"
-                "that applications find the installed osg libraries, system wide, you\n"
-                "could add ${CMAKE_INSTALL_PREFIX}/lib${LIB_POSTFIX} to it.")
-            ENDIF()
-        ENDIF()
-
-        # emit a message during installation.
-        INSTALL(CODE "MESSAGE(\"Libraries were installed to ${CMAKE_INSTALL_PREFIX}lib${LIB_POSTFIX}.\\nYou may need to update your ld.so configuration. \")")
-
-    ENDIF(NOT OSG_LIBPATH_MESSAGE_HAS_BEEN_RUN_BEFORE)
-
-ELSE()
-    SET(OSG_LIBPATH_MESSAGE_HAS_BEEN_RUN_BEFORE 0 CACHE INTERNAL "Flag to track whether the libpath message has been reported before")
 ENDIF()
 
 

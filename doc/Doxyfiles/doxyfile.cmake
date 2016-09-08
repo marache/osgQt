@@ -4,7 +4,7 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = OpenSceneGraph
+PROJECT_NAME           = osgQt
 PROJECT_NUMBER         = ${OPENSCENEGRAPH_VERSION}
 OUTPUT_DIRECTORY       = "${PROJECT_BINARY_DIR}/doc/"
 CREATE_SUBDIRS         = NO
@@ -83,22 +83,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = "${OpenSceneGraph_SOURCE_DIR}/include/osg" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgDB" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgFX" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgGA" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgManipulator" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgParticle" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgShadow" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgSim" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgTerrain" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgText" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgUtil" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgViewer" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgVolume" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgWidget" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgQt" \
-                         "${OpenSceneGraph_SOURCE_DIR}/include/osgAnimation"
+INPUT                  = "${OpenSceneGraph_SOURCE_DIR}/include/osgQt" \
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *include* \
                          *.cpp
